@@ -142,15 +142,27 @@ class Halma():
                 if len(move["to"]) == 0:
                     continue
                 tempMove = move["to"][:]
+                tempMove1 = move["to"][:]
                 if player == originalPlayer:
                     if move["from"].location in checkBase:
-                        for t in move["to"]:
+                        moveFrom = move["from"].location
+                        for t in tempMove:
+                            if player == 2 and self.manhattanDistance(t.location, [0, 0]) <= self.manhattanDistance(moveFrom, [0, 0]):
+                                tempMove1.remove(t)
+                            elif player == 1 and self.manhattanDistance(moveFrom, [15, 15]) >= self.manhattanDistance(t.location, [15, 15]):
+                                tempMove1.remove(t)
+                        if len(tempMove1) == 0:
+                            continue
+                        tempMove2 = tempMove1[:]
+                        for t in tempMove2:
                             if t.location in checkBase:
-                                move["to"].remove(t)
-                        if len(move["to"]) == 0:
-                            move["to"] = tempMove
+                                tempMove1.remove(t)
+                        if len(tempMove1) == 0:
+                            move["to"] = tempMove2
                             tempMoves.append(move)
+
                         else:
+                            move["to"] = tempMove1
                             priorityOneMove.append(move)
 
                     elif move["from"].location not in checkGoals:
@@ -223,22 +235,6 @@ class Halma():
                     continue
                 if preJumpSquare.pawn == Square.pBlank and preJumpSquare.location is not square.location:
                     if adjacent:  # Don't consider adjacent on subsequent calls
-
-                        if player == 2 and basePawn:
-                            if (preJumpSquare.location[0] > square.location[0]) and (
-                                    preJumpSquare.location[1] > square.location[1]):
-                                moves.append(preJumpSquare)
-                                if player == originalPlayer and not notTrack:
-                                    self.moveMap[oldSquare.location][square.location].add(preJumpSquare.location)
-
-                            continue
-                        if player == 1 and basePawn:
-                            if (preJumpSquare.location[0] < square.location[0]) and (
-                                    preJumpSquare.location[1] < square.location[1]):
-                                moves.append(preJumpSquare)
-                                if player == originalPlayer and not notTrack:
-                                    self.moveMap[oldSquare.location][square.location].add(preJumpSquare.location)
-                            continue
                         moves.append(preJumpSquare)
                         if player == originalPlayer and not notTrack:
                             self.moveMap[oldSquare.location][square.location].add(preJumpSquare.location)
@@ -261,28 +257,16 @@ class Halma():
                     continue
                 if jumpSquare.pawn == Square.pBlank and jumpSquare.location is not square.location:
                     # Prioritize jumps over single adjacent moves
-                    if player == 2 and basePawn:
-                        if (jumpSquare.location[0] > square.location[0]) and (
-                                jumpSquare.location[1] > square.location[1]):
-                            moves.insert(0, jumpSquare)
-                            if player == originalPlayer and not notTrack:
-                                self.moveMap[oldSquare.location][square.location].add(jumpSquare.location)
-                            self.getMovesAtSquare(jumpSquare, player, oldSquare, originalPlayer, moves, False)
-                        continue
-                    if player == 1 and basePawn:
-                        if (jumpSquare.location[0] < square.location[0]) and (
-                                jumpSquare.location[1] < square.location[1]):
-                            moves.insert(0, jumpSquare)
-                            if player == originalPlayer and not notTrack:
-                                self.moveMap[oldSquare.location][square.location].add(jumpSquare.location)
-                            self.getMovesAtSquare(jumpSquare, player, oldSquare, originalPlayer, moves, False)
-                        continue
-
                     moves.insert(0, jumpSquare)
                     if player == originalPlayer and not notTrack:
                         self.moveMap[oldSquare.location][square.location].add(jumpSquare.location)
                     self.getMovesAtSquare(jumpSquare, player, oldSquare, originalPlayer, moves, False)
         return moves
+
+    def manhattanDistance(self, p0, p1):
+        dx = abs(p0[0] - p1[0])
+        dy = abs(p0[1] - p1[1])
+        return dx + dy
 
     def determineWinner(self):
 
@@ -301,21 +285,8 @@ class Halma():
 
     def evaluationFunction(self, player):
 
-        def chebyshevDistance(p0, p1):
-            dx = abs(p0[0] - p1[0])
-            dy = abs(p0[1] - p1[1])
-            # Chebyshev constants
-            D = 1
-            D2 = 1
-            return D * (dx + dy) + (D2 - 2 * D) * min(dx, dy)
-
-        def manhattanDistance(p0, p1):
-            dx = abs(p0[0] - p1[0])
-            dy = abs(p0[1] - p1[1])
-            return dx + dy
-
         value = 0
-        distanceHeuristic = manhattanDistance
+        distanceHeuristic = self.manhattanDistance
         for col in range(self.boardSize):
             for row in range(self.boardSize):
 
@@ -404,7 +375,8 @@ if __name__ == "__main__":
             i = 0
             j = 1
             while j != len(pathList):
-                output += "J " + str(pathList[i][1]) + "," + str(pathList[i][0]) + " " + str(pathList[j][1]) + "," + str(
+                output += "J " + str(pathList[i][1]) + "," + str(pathList[i][0]) + " " + str(
+                    pathList[j][1]) + "," + str(
                     pathList[j][0]) + "\n"
                 i += 1
                 j += 1
