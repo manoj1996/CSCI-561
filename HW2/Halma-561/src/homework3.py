@@ -106,9 +106,7 @@ class Halma():
                     bestMove = (move["from"].location, to.location)
                     beta = min(beta, val)
 
-                if self.alphaBetaEnabled and not maxNode and alpha >= val:
-                    return bestVal, bestMove, prunes + 1, boards
-                if self.alphaBetaEnabled and maxNode and val >= beta:
+                if self.alphaBetaEnabled and beta <= alpha:
                     return bestVal, bestMove, prunes + 1, boards
 
         return bestVal, bestMove, prunes, boards
@@ -116,7 +114,6 @@ class Halma():
     def getNextMoves(self, player=1, originalPlayer=1):
         if player == originalPlayer:
             priorityTwoMove = []
-            priorityThreeMove = []
         priorityOneMove = []
         tempMoves = []
         checkGoals = self.bGoalLoc
@@ -165,10 +162,24 @@ class Halma():
                             move["to"] = tempMove1
                             priorityOneMove.append(move)
 
-                    elif move["from"].location not in checkGoals:
-                        priorityTwoMove.append(move)
+                    elif move["from"].location in checkGoals:
+                        tempMove = move["to"][:]
+                        for t in tempMove:
+                            if t.location not in checkGoals:
+                                move["to"].remove(t)
+                        if len(move["to"]):
+                            priorityTwoMove.append(move)
+
                     else:
-                        priorityThreeMove.append(move)
+                        tempMove = move["to"][:]
+                        for t in tempMove:
+                            if t.location not in checkGoals:
+                                move["to"].remove(t)
+                        if len(move["to"]):
+                            priorityTwoMove.append(move)
+                        else:
+                            move["to"] = tempMove
+                            priorityTwoMove.append(move)
                 else:
                     priorityOneMove.append(move)
         if player == originalPlayer:
@@ -178,8 +189,6 @@ class Halma():
                 moves = priorityOneMove
             elif len(priorityTwoMove) > 0:
                 moves = priorityTwoMove
-            else:
-                moves = priorityThreeMove
         else:
             moves = priorityOneMove
         return moves
@@ -192,12 +201,6 @@ class Halma():
         row = square.location[0]
         col = square.location[1]
 
-        checkBase = self.bBaseLoc
-        if player == Square.pWhite:
-            checkBase = self.wBaseLoc
-        basePawn = False
-        if square.location in checkBase:
-            basePawn = True
         # List of valid square types to move to
         validSquares = [Square.sBlank, Square.sWhite, Square.sBlack]
 
@@ -270,15 +273,10 @@ class Halma():
 
     def determineWinner(self):
 
-        if all(self.board[g.location[0]][g.location[1]].pawn == Square.pWhite for g in self.wGoals):
+        if all(self.board[g[0]][g[1]].pawn == Square.pWhite for g in self.wGoalLoc):
             return Square.pWhite
-        # c = 0
-        # for g in self.wGoals:
-        #     if g.pawn == Square.pWhite:
-        #         c += 1
-        # if c == 19:
-        #     return Square.pWhite
-        elif all(self.board[g.location[0]][g.location[1]].pawn == Square.pBlack for g in self.bGoals):
+
+        elif all(self.board[g[0]][g[1]].pawn == Square.pBlack for g in self.bGoalLoc):
             return Square.pBlack
         else:
             return None
@@ -293,13 +291,13 @@ class Halma():
                 square = self.board[row][col]
 
                 if square.pawn == Square.pWhite:
-                    distances = [distanceHeuristic(square.location, g.location) for g in self.wGoals if
-                                 g.pawn != Square.pWhite]
+                    distances = [distanceHeuristic(square.location, g) for g in self.wGoalLoc if
+                                 self.board[g[0]][g[1]].pawn != Square.pWhite]
                     value -= max(distances) if len(distances) else -50
 
                 elif square.pawn == Square.pBlack:
-                    distances = [distanceHeuristic(square.location, g.location) for g in self.bGoals if
-                                 g.pawn != Square.pBlack]
+                    distances = [distanceHeuristic(square.location, g) for g in self.bGoalLoc if
+                                 self.board[g[0]][g[1]].pawn != Square.pBlack]
                     value += max(distances) if len(distances) else -50
 
         if player == Square.pBlack:
