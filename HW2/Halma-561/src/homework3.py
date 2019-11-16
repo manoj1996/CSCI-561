@@ -1,3 +1,4 @@
+import math
 import time
 
 
@@ -24,7 +25,7 @@ class Halma():
     moveMap = {}
 
     # Create initial board setup to define goals squares
-    def __init__(self, boardSize=16):
+    def __init__(self, boardSize=16, playerColor=Square.pBlack):
 
         board = [[None] * boardSize for _ in range(boardSize)]
         for row in range(boardSize):
@@ -45,6 +46,7 @@ class Halma():
         # Save variables
         self.boardSize = boardSize
         self.board = board
+        self.playerColor = playerColor
         self.alphaBetaEnabled = True
         self.bBaseLoc = {t.location: None for row in board for t in row if t.square == Square.pBlack}
         self.wBaseLoc = {t.location: None for row in board for t in row if t.square == Square.pWhite}
@@ -52,16 +54,32 @@ class Halma():
         self.wGoalLoc = self.bBaseLoc
         self.bGoals = {t: None for row in board for t in row if t.square == Square.pWhite}
         self.wGoals = {t: None for row in board for t in row if t.square == Square.pBlack}
+        self.agent = None
+        self.ai = None
+        if playerColor == Square.pBlack:
+            self.agent = Square.pBlack
+            self.ai = Square.pWhite
+        else:
+            self.agent = Square.pWhite
+            self.ai = Square.pBlack
+        self.evaluationCriteria = self.evaluate
 
     def updateBoard(self, board):
         self.board = board
 
+    def changeEvaluationCriteria(self):
+        self.evaluationCriteria = self.evaluationFunction
+
     def minimax(self, depth, maxPlayer, maxTime, originalPlayer, alpha=float("-inf"), beta=float("inf"), maxNode=True,
                 prunes=0, boards=0):
+        if maxPlayer == Square.pBlack:
+            ai = Square.pWhite
+        else:
+            ai = Square.pBlack
 
         # Base case when either we hit the last node or we have a winner or if time limit exceeds
-        if depth == 0 or self.determineWinner() or time.time() > maxTime:
-            return self.evaluationFunction(maxPlayer), None, prunes, boards
+        if depth == 0 or self.determineWinner(maxPlayer) or time.time() > maxTime:
+            return self.evaluationCriteria(maxPlayer, ai), None, prunes, boards
 
         # Initial val, alpha and beta variables are setup
         bestMove = None
@@ -85,7 +103,6 @@ class Halma():
                 move["from"].pawn = Square.pBlank
                 to.pawn = fromPawn
                 boards += 1
-
                 # Recursively call self
                 val, _, newPrunes, newBoards = self.minimax(depth - 1, maxPlayer, maxTime, originalPlayer, alpha, beta,
                                                             not maxNode, prunes, boards)
@@ -112,8 +129,9 @@ class Halma():
         return bestVal, bestMove, prunes, boards
 
     def getNextMoves(self, player=1, originalPlayer=1):
-        if player == originalPlayer:
-            priorityTwoMove = []
+        # if player == originalPlayer:
+        moves = []
+        priorityTwoMove = []
         priorityOneMove = []
         tempMoves = []
         checkGoals = self.bGoalLoc
@@ -121,8 +139,8 @@ class Halma():
         if player == Square.pWhite:
             checkBase = self.wBaseLoc
             checkGoals = self.wGoalLoc
-        for col in range(self.boardSize):
-            for row in range(self.boardSize):
+        for row in range(self.boardSize):
+            for col in range(self.boardSize):
                 currentSquare = self.board[row][col]
 
                 # Skip squares that doesn't contain the player's pawns
@@ -169,6 +187,8 @@ class Halma():
                                 move["to"].remove(t)
                         if len(move["to"]):
                             priorityTwoMove.append(move)
+                        else:
+                            continue
 
                     else:
                         tempMove = move["to"][:]
@@ -271,17 +291,86 @@ class Halma():
         dy = abs(p0[1] - p1[1])
         return dx + dy
 
-    def determineWinner(self):
+    def eucleideanDistance(self, source, destination):
+        x_source, y_source = source
+        x_destination, y_destination = destination
+        return 100 * math.sqrt((x_destination - x_source) ** 2 + (y_destination - y_source) ** 2)
 
-        if all(self.board[g[0]][g[1]].pawn == Square.pWhite for g in self.wGoalLoc):
-            return Square.pWhite
+    def chebyshevDistance(self, p0, p1):
+        dx = abs(p0[0] - p1[0])
+        dy = abs(p0[1] - p1[1])
+        # Chebyshev constants
+        D = 1
+        D2 = 1
+        return D * (dx + dy) + (D2 - 2 * D) * min(dx, dy)
 
-        elif all(self.board[g[0]][g[1]].pawn == Square.pBlack for g in self.bGoalLoc):
-            return Square.pBlack
+    def numPiecesTarget(self, player):
+        if player == Square.pBlack:
+            l = [1 for g in self.bGoalLoc if self.board[g[0]][g[1]].pawn == Square.pBlack]
         else:
-            return None
+            l = [1 for g in self.wGoalLoc if self.board[g[0]][g[1]].pawn == Square.pWhite]
+        return len(l)
 
-    def evaluationFunction(self, player):
+    def numPiecesBase(self, player):
+        if player == Square.pBlack:
+            l = [1 for g in self.bBaseLoc if self.board[g[0]][g[1]].pawn == Square.pBlack]
+        else:
+            l = [1 for g in self.wBaseLoc if self.board[g[0]][g[1]].pawn == Square.pWhite]
+        return len(l)
+
+    def determineWinner(self, p):
+        if p == Square.pWhite:
+            if all(self.board[g[0]][g[1]].pawn == Square.pWhite for g in self.wGoalLoc):
+                return Square.pWhite
+        elif p == Square.pBlack:
+            if all(self.board[g[0]][g[1]].pawn == Square.pBlack for g in self.bGoalLoc):
+                return Square.pBlack
+        return None
+
+    def sumOfAllDistances(self, p):
+        distance = 0
+        for row in range(self.boardSize):
+            for col in range(self.boardSize):
+                distanceHeuristic = self.chebyshevDistance
+                square = self.board[row][col]
+                if square.pawn == p and p == Square.pWhite:
+                    if self.numPiecesTarget(p) < 12:
+                        distance += distanceHeuristic(square.location, (0, 0))
+                    else:
+                        distanceHeuristic = self.manhattanDistance
+                        distances = [distanceHeuristic(square.location, g) for g in
+                                     self.wGoalLoc if self.board[g[0]][g[1]].pawn != Square.pWhite]
+                        distance += max(distances) if len(distances) else 1000
+                elif square.pawn == p and p == Square.pBlack:
+                    if self.numPiecesTarget(p) < 12:
+                        distance += distanceHeuristic(square.location, (15, 15))
+                    else:
+                        distanceHeuristic = self.manhattanDistance
+                        distances = [distanceHeuristic(square.location, g) for g in
+                                     self.bGoalLoc if self.board[g[0]][g[1]].pawn != Square.pBlack]
+                        distance += max(distances) if len(distances) else 1000
+
+        return distance
+
+    def evaluate(self, p, opp):
+        checkAgentWin = self.determineWinner(self.agent)
+        checkAiWin = self.determineWinner(self.ai)
+        agentScore = self.sumOfAllDistances(p)
+        aiScore = self.sumOfAllDistances(opp)
+        agentTargets = 10 * self.numPiecesTarget(self.agent)
+        aiTargets = 10 * self.numPiecesTarget(self.ai)
+
+        if checkAgentWin:
+            return 20000
+        elif checkAiWin:
+            return -20000
+
+        if p == self.ai:
+            return -aiScore + agentScore + aiTargets
+        else:
+            return -agentScore + aiScore + agentTargets
+
+    def evaluationFunction(self, p, opp):
 
         value = 0
         distanceHeuristic = self.manhattanDistance
@@ -300,7 +389,7 @@ class Halma():
                                  self.board[g[0]][g[1]].pawn != Square.pBlack]
                     value += max(distances) if len(distances) else -50
 
-        if player == Square.pBlack:
+        if self.playerColor == Square.pBlack:
             value *= -1
 
         return value
@@ -328,7 +417,7 @@ if __name__ == "__main__":
         for record in f.readlines():
             fileInput.append(record.strip())
         f.close()
-    move = fileInput[0]
+    game = fileInput[0]
     playerColor = fileInput[1]
     timeRemaining = float(fileInput[2])
     boardConfig = list()
@@ -353,13 +442,20 @@ if __name__ == "__main__":
     else:
         playerTurn = Square.pBlack
 
-    h = Halma(16)
+    h = Halma(16, playerTurn)
     h.updateBoard(currentBoardConfig)
+    if h.numPiecesTarget(playerTurn) > 8 or h.numPiecesBase(playerTurn) > 0:
+        treeDepthSearch = 3
+    else:
+        treeDepthSearch = 2
 
-    treeDepthSearch = 3
+    if h.numPiecesTarget(playerTurn) > 10:
+        h.changeEvaluationCriteria()
+    # print("Tree depth - ", str(treeDepthSearch))
     maxAvailableTime = time.time() + timeRemaining
-    maxAvailableTimeTurn = min(time.time() + 30, maxAvailableTime)
+    maxAvailableTimeTurn = min(time.time() + 20, maxAvailableTime)
     _, move, prunes, boards = h.minimax(treeDepthSearch, playerTurn, maxAvailableTimeTurn, playerTurn)
+    # prevMove, finalMove = None, None
     if move:
         # print("Total number of boards/nodes generated : ", boards)
         # print("Moves:", move)
@@ -367,23 +463,45 @@ if __name__ == "__main__":
         output = ""
         if (abs(move[0][0] - move[1][0]) == 1 or abs(move[0][1] - move[1][1])) == 1:
             output = "E " + str(move[0][1]) + "," + str(move[0][0]) + " " + str(move[1][1]) + "," + str(move[1][0])
+            # prevMove = (move[0][1], move[0][0])
+            # finalMove = (move[1][1], move[1][0])
         else:
             output = ""
             pathList = h.getMovePath(h.moveMap[move[0]], move[0], move[1])
             i = 0
             j = 1
+            # prevMove = (pathList[0][1], pathList[0][0])
             while j != len(pathList):
                 output += "J " + str(pathList[i][1]) + "," + str(pathList[i][0]) + " " + str(
                     pathList[j][1]) + "," + str(
                     pathList[j][0]) + "\n"
                 i += 1
                 j += 1
+            # finalMove = (pathList[len(pathList) - 1][1], pathList[len(pathList) - 1][0])
         with open("output.txt", "w+") as fWrite:
             fWrite.write(output.strip())
         end = time.time()
     else:
         print("Invalid game configuration or player already won")
         end = time.time()
-
+    # boardConfig[prevMove[1]][prevMove[0]] = "."
+    # if playerColor.lower() == "white":
+    #     boardConfig[finalMove[1]][finalMove[0]] = "W"
+    #     oppColor = "BLACK"
+    # else:
+    #     boardConfig[finalMove[1]][finalMove[0]] = "B"
+    #     oppColor = "WHITE"
+    #
+    # sOutput = ""
+    #
+    # sOutput += str(game) + "\n" + str(oppColor) + "\n" + str(timeRemaining) + "\n"
+    # for r in range(len(boardConfig)):
+    #     s = ""
+    #     for c in range(len(boardConfig[0])):
+    #         s += str(boardConfig[r][c])
+    #     s += "\n"
+    #     sOutput += s
+    # with open("input.txt", "w+") as f1:
+    #     f1.write(sOutput)
     # Print search result stats
     # print("Time to compute : ", round(end - start, 4))
