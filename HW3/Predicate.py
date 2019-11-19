@@ -2,37 +2,30 @@ class Predicate():
     """
     defines one predicate and the operations allowed on them
     member variables include:
-    negative : True if predicate is negated
+    negated : True if predicate is negated
     name : the name of the predicate
     predicate_string : the unparsed predicate string
     arguments : list of predicate arguments
     """
     def __init__(self, predicate):
-        """
-        predicate should be of the form : ~A(x,y,John)
-        negative : True if predicate is negated
-        name : predicate name
-        arguments : list of arguments
-        """
         split_predicate = predicate.split('(')
-        self.negative = False
+        self.negated = False
         self.name = split_predicate[0]
         self.predicate_string = predicate
         if '~' in split_predicate[0]:
             self.name = split_predicate[0][1:]
-            self.negative = True
+            self.negated = True
         parameters = split_predicate[1][:-1]        # remove closing parenthesis
         self.arguments = parameters.split(',')
-        variable_prefix = self.name[0].lower()
 
     def __str__(self):
-        return '~'[not self.negative:] + self.name + '(' + ','.join(self.arguments) + ')'
+        return '~'[not self.negated:] + self.name + '(' + ','.join(self.arguments) + ')'
 
     def negate(self):
         """
         to negate a predicate
         """
-        self.negative = not self.negative
+        self.negated = not self.negated
         self.update_predicate_string()
 
     def __eq__(self, predicate):
@@ -57,11 +50,11 @@ class Predicate():
         """
         reconstructs predicate string
         """
-        self.predicate_string = '~'[not self.negative:] + self.name + '(' + ','.join(self.arguments) + ')'
+        self.predicate_string = '~'[not self.negated:] + self.name + '(' + ','.join(self.arguments) + ')'
 
     def substitute(self, substitution):
         """
-        substitues 'substitution' in the self predicate
+        substitutes 'substitution' in the self predicate
         object obtained as a result of unification of
         this predicate with another
         """

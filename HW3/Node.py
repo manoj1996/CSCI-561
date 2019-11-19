@@ -5,17 +5,17 @@ class Node():
     while parsing a statement and converting it to CNF.
     """
 
-    def __init__(self, value, predicates_dict):
-        self.value = value
-        self.negation = False
-        self.operator = True
+    def __init__(self, val, predicates_map):
+        self.val = val
+        self.negated = False
+        self.op = True
         self.left = None
         self.right = None
-        if value in predicates_dict:
-            if '~' in predicates_dict[value]:
-                self.negation = True
-                predicates_dict[value] = predicates_dict[value][1:]
-            self.operator = False
+        if val in predicates_map:
+            if '~' in predicates_map[val]:
+                self.negated = True
+                predicates_map[val] = predicates_map[val][1:]
+            self.op = False
 
     def inorder_traversal(self, node):
         global traversal
@@ -27,8 +27,8 @@ class Node():
         global traversal
         if node:
             self.inorder(node.left)
-            if node.negation:
-                traversal += '~' + node.value
+            if node.negated:
+                traversal += '~' + node.val
             else:
-                traversal += node.value
+                traversal += node.val
             self.inorder(node.right)

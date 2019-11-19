@@ -4,14 +4,14 @@ import re
 import copy
 import collections
 from Node import *
-predicates_dict = {}  # maintains predicates to constant mapping for a FOL statement
-INPUT_FILE = 'input2.txt'
+predicates_map = {}  # maintains predicates to constant mapping for a FOL stat
+INPUT_FILE = 'input3.txt'
 OUTPUT_FILE = 'output.txt'
 KNOWLEDGE_BASE_HASH = {}
 """
 Structure of KNOWLEDGE_BASE_HASH:
 {
-    "Predicate_Name" : set(statement_1, statement_2 ...) - that is set of statements objects
+    "Predicate_Name" : set(stat_1, stat_2 ...) - that is set of stats objects
 }
 """
 KNOWLEDGE_BASE = set()
@@ -20,46 +20,46 @@ Structure of KNOWLEDGE_BASE:
 set([Statement Object 1, Statement Object 2 ...])
 """
 
-def convert_postfix_to_tree(statement):
+def convert_postfix_to_tree(stat):
     """
-    parses postfix representation of a statement and
+    parses postfix representation of a stat and
     converts it to tree notation, where leaf nodes
-    are predicate nodes and internal nodes are operators
+    are predicate nodes and internal nodes are ops
     """
     stack = []
     r = re.compile('(~|&|\||=>|[A-Z][A-Z])')
-    predicates = r.findall(statement)
+    predicates = r.findall(stat)
     for token in predicates:
         if token in ['&', '|', '=>']:
             operand2 = stack.pop()
             operand1 = stack.pop()
-            operator = Node(token, predicates_dict)
-            operator.left = operand1
-            operator.right = operand2
-            stack.append(operator)
+            op = Node(token, predicates_map)
+            op.left = operand1
+            op.right = operand2
+            stack.append(op)
         elif token == '~':
-            stack[-1].negation = not stack[-1].negation
+            stack[-1].negated = not stack[-1].negated
         else:
-            operand = Node(token, predicates_dict)
+            operand = Node(token, predicates_map)
             stack.append(operand)
     return stack[0]
 
 
-def convert_to_postfix(statement):
+def convert_to_postfix(stat):
     """
     implementation of Shunting-Yard Algorithm
-    to convert a infix statement to postfix statement
+    to convert a infix stat to postfix stat
     """
     stack = []
-    operator_priority = {'~': 4, '&': 3, '|': 2, '=>': 1}  # ~: Not, &: And, |: Or, =>: Implication
+    op_priority = {'~': 4, '&': 3, '|': 2, '=>': 1}  # ~: Not, &: And, |: Or, =>: Implication
     r = re.compile('(~|&|\||=>|[A-Z][A-Z]|\(|\))')
-    predicates = r.findall(statement)
+    predicates = r.findall(stat)
     postfix = ''
     for token in predicates:
         if re.match('[A-Z][A-Z]', token):
             postfix += token
         elif token in ['~', '&', '|', '=>']:
-            while len(stack) != 0 and stack[-1] not in ['(', ')'] and operator_priority[stack[-1]] >= operator_priority[
+            while len(stack) != 0 and stack[-1] not in ['(', ')'] and op_priority[stack[-1]] >= op_priority[
                 token]:
                 postfix += stack.pop()
             stack.append(token)
@@ -76,8 +76,8 @@ def convert_to_postfix(statement):
 
 def parse_input():
     """
-    Parses the Query statements and the Knowledge base
-    statements from the input file and returns them
+    Parses the Query stats and the Knowledge base
+    stats from the input file and returns them
     """
     QUERIES = []
     FOL_SENTENCES = []
@@ -102,98 +102,98 @@ def parse_input():
 
 def prepare_knowledgebase(FOL_SENTENCES):
     """
-    Takes a set of FOL statements and performs
+    Takes a set of FOL stats and performs
     preprocessing for converting them to CNF form
-    adds the converted CNF statements to KNOWLEDGE_BASE and
+    adds the converted CNF stats to KNOWLEDGE_BASE and
     updates the KNOWLEDGE_BASE_HASH
     """
-    global predicates_dict
+    global predicates_map
     cnf = CNF()
-    for statement in FOL_SENTENCES:
-        predicates_dict.clear()
-        statement, predicates_dict = cnf.replace_predicate_by_constant(statement)
-        statement = convert_to_postfix(statement)
-        root = convert_postfix_to_tree(statement)  # convert to expression tree
+    for stat in FOL_SENTENCES:
+        predicates_map.clear()
+        stat, predicates_map = cnf.replace_predicate_by_constant(stat)
+        stat = convert_to_postfix(stat)
+        root = convert_postfix_to_tree(stat)  # convert to expression tree
         cnf.remove_implication(root)  # remove implication
-        cnf.propagate_negation(root)  # propagate negation
-        cnf.distribute_and_over_or(root, predicates_dict)  # distribute AND over OR
+        cnf.propagate_negated(root)  # propagate negated
+        cnf.distribute_and_over_or(root, predicates_map)  # distribute AND over OR
         inorder = Node.inorder_traversal(root, root)
-        statement = cnf.replace_constant_by_predicate(inorder, predicates_dict)
-        statements = statement.split('&')
-        statements = cnf.standardize_variables(statements)
-        for cnf_stmt in statements:
+        stat = cnf.replace_constant_by_predicate(inorder, predicates_map)
+        stats = stat.split('&')
+        stats = cnf.standardize_variables(stats)
+        for cnf_stmt in stats:
             stmt_obj = Statement(cnf_stmt)
-            stmt_obj.add_statement_to_KB(KNOWLEDGE_BASE, KNOWLEDGE_BASE_HASH)
+            stmt_obj.add_stat_to_knowledge_base(KNOWLEDGE_BASE, KNOWLEDGE_BASE_HASH)
 
 
-def display_knowledgebase(KB, KB_HASH=None):
+def display_knowledgebase(knowledge_base, knowledge_base_hash=None):
     """
     takes Knowledge base and KNOWLEDGE_BASE_HASH as arguments
     """
     print("\nKNOWLEDGE_BASE\n")
-    for statement in KB:
-        print(statement)
-    print('Total No. of Statements : ', len(KB))
-    if KB_HASH:
+    for stat in knowledge_base:
+        print(stat)
+    print('Total No. of Statements : ', len(knowledge_base))
+    if knowledge_base_hash:
         print("\nKNOWLEDGE_BASE_HASH\n")
-        for key, value in KB_HASH.items():
-            print(key, ':', len(value), ' Statements')
+        for key, val in knowledge_base_hash.items():
+            print(key, ':', len(val), ' Statements')
 
 
-def FOL_Resolution(KB, KB_HASH, query):
+def FOL_Resolution(knowledge_base, knowledge_base_hash, query):
     """
-    Performs resolution of KB and query using Set of Set
-    approach where KB is one set and KB2 is the second set
-    query is the statement to be proved using resolution
+    Performs resolution of knowledge_base and query using Set of Set
+    approach where knowledge_base is one set and knowledge_base2 is the second set
+    query is the stat to be proved using resolution
     Returns: True if a contradiction is found and hence query
     is proved to be True
     else False if query cannot be proved from the Knowledge base
     """
-    KB2 = set()
-    KB_HASH = {}
-    query.add_statement_to_KB(KB2, KB_HASH)
-    query.add_statement_to_KB(KB, KB_HASH)
+    knowledge_base2 = set()
+    knowledge_base_hash = {}
+    query.add_stat_to_knowledge_base(knowledge_base2, knowledge_base_hash)
+    query.add_stat_to_knowledge_base(knowledge_base, knowledge_base_hash)
     while True:
-        history = {}  # maintains mapping of statements that have been resolved earlier
-        new_statements = set()
-        for statement1 in KB:
-            # get possible set of statements with which the current statement cant be resolved
-            resolving_clauses = statement1.get_resolving_clauses(KB_HASH)
-            for statement2 in resolving_clauses:
-                if statement1 == statement2:
-                    continue  # avoids resolution of a statement with itself
+        history = {}  # maintains mapping of stats that have been resolved earlier
+        new_stats = set()
+        for stat1 in knowledge_base:
+            # get possible set of stats with which the current stat cant be resolved
+            resolving_clauses = stat1.get_resolving_clauses(knowledge_base_hash)
+            for stat2 in resolving_clauses:
+                if stat1 == stat2:
+                    continue  # avoids resolution of a stat with itself
                 flag1 = False
                 flag2 = False
-                if statement2.statement_string in history:
+                if stat2.logic_stat_string in history:
                     flag1 = True
-                    if statement1.statement_string in history[statement2.statement_string]:
-                        history[statement2.statement_string].discard(statement1.statement_string)
-                        continue  # avoids resolving two statements that appear in history
-                if statement1.statement_string in history:
+                    if stat1.logic_stat_string in history[stat2.logic_stat_string]:
+                        history[stat2.logic_stat_string].discard(stat1.logic_stat_string)
+                        continue  # avoids resolving two stats that appear in history
+                if stat1.logic_stat_string in history:
                     flag2 = True
-                    if statement2.statement_string in history[statement1.statement_string]:
-                        history[statement1.statement_string].discard(statement2.statement_string)
-                        continue  # avoids resolving two statements that appear in history
+                    if stat2.logic_stat_string in history[stat1.logic_stat_string]:
+                        history[stat1.logic_stat_string].discard(stat2.logic_stat_string)
+                        continue  # avoids resolving two stats that appear in history
                 # update history
                 if flag2:
-                    history[statement1.statement_string].add(statement2.statement_string)
+                    history[stat1.logic_stat_string].add(stat2.logic_stat_string)
                 else:
-                    history[statement1.statement_string] = {statement2.statement_string}
-                resolvents = statement1.resolve(statement2)  # resolve statement1 with statement2
+                    history[stat1.logic_stat_string] = {stat2.logic_stat_string}
+                resolvents = stat1.resolve(stat2)  # resolve stat1 with stat2
                 if resolvents == False:  # contradiction found, return True
                     return True
-                new_statements = new_statements.union(resolvents)
-        if new_statements.issubset(KB):
+                new_stats = new_stats.union(resolvents)
+        if new_stats.issubset(knowledge_base):
             return False  # returns False if no new Knowledge is infered
-        new_statements = new_statements.difference(KB)
-        # update Knowledge base 2 to contains newly infered statements only
-        KB2 = set()
-        KB_HASH = {}
-        for stmt in new_statements:
-            stmt.add_statement_to_KB(KB2, KB_HASH)
-        # add newly infered statements to Knowledge base 1 as well
-        # to allow resoltion between newly infered statements
-        KB = KB.union(new_statements)
+        new_stats = new_stats.difference(knowledge_base)
+        # update Knowledge base 2 to contains newly infered stats only
+        knowledge_base2 = set()
+        knowledge_base_hash = {}
+        for stmt in new_stats:
+            stmt.add_stat_to_knowledge_base(knowledge_base2, knowledge_base_hash)
+        # add newly infered stats to Knowledge base 1 as well
+        # to allow resoltion between newly infered stats
+        knowledge_base = knowledge_base.union(new_stats)
 
 
 def write_output(result):
@@ -206,40 +206,40 @@ def write_output(result):
     f_output.close()
 
 
-def factor_statements(statement_set):
+def factor_stats(stat_set):
     """
     removes duplicate predicates from a set
-    of statements and returns factored statements
+    of stats and returns factored stats
     """
-    for statement in statement_set:
+    for stat in stat_set:
         new_predicate_set = set()
-        predicate_list = list(statement.predicate_set)
+        predicate_list = list(stat.predicate_set)
         for index, predicate1 in enumerate(predicate_list):
             for predicate2 in predicate_list[index + 1:]:
-                if predicate1.negative == predicate2.negative:
+                if predicate1.negated == predicate2.negated:
                     substitution = predicate1.unify_with_predicate(predicate2)
                     if substitution == False:
                         continue
                     else:
                         for pred in predicate_list:
                             pred.substitute(substitution)
-        statement.init_from_predicate_set(set(predicate_list))
-    return statement_set
+        stat.init_from_predicate_set(set(predicate_list))
+    return stat_set
 
 if __name__ == "__main__":
     QUERIES, FOL_SENTENCES = parse_input()
     prepare_knowledgebase(FOL_SENTENCES)
     output = ""
     # performs resolution for each query
-    # negates the query, prepares a statement for the negated query,
+    # negates the query, prepares a stat for the negated query,
     # prepares a new copy of Knowledge base and Hash
     # Performs resoltion and writes result
     for query_predicate in QUERIES:
         query_predicate.negate()
         query_predicate = Statement(query_predicate.predicate_string)
-        KB = copy.deepcopy(KNOWLEDGE_BASE)
-        KB_HASH = copy.deepcopy(KNOWLEDGE_BASE_HASH)
-        satisfiability = FOL_Resolution(KB, KB_HASH, query_predicate)
+        knowledge_base = copy.deepcopy(KNOWLEDGE_BASE)
+        knowledge_base_hash = copy.deepcopy(KNOWLEDGE_BASE_HASH)
+        satisfiability = FOL_Resolution(knowledge_base, knowledge_base_hash, query_predicate)
         output += 'TRUE' + '\n' if satisfiability else 'FALSE' + '\n'
     display_knowledgebase(KNOWLEDGE_BASE, KNOWLEDGE_BASE_HASH)
     write_output(output)

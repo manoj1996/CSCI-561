@@ -4,8 +4,8 @@ from Node import *
 class CNF():
 
     def __init__(self):
-        self.upper_alpha_mapping = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
-        self.lower_alpha_mapping = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+        self.upper_case_letters = list(map(chr, range(65, 91)))
+        self.lower_case_letters = list(map(chr, range(97, 123)))
         self.standard_variable_count = 0
 
     def remove_implication(self, node):
@@ -15,30 +15,30 @@ class CNF():
         """
         if node:
             self.remove_implication(node.left)
-            if node.operator and node.value == '=>':
-                node.value = '|'
-                node.left.negation = not node.left.negation
+            if node.op and node.val == '=>':
+                node.val = '|'
+                node.left.negated = not node.left.negated
             self.remove_implication(node.right)
 
-    def give_constant(self, count, uppercase):
+    def assign_predicate_constant(self, count, uppercase):
         """
         count >= 0
         uppercase : if True then constant begin from AA, else from aa
-        returns a string constant for count value
+        returns a string constant for count val
         """
         start = count + 26
         str_constant = ''
         while start >= 26:
             val = start % 26
             if uppercase:
-                str_constant = self.upper_alpha_mapping[val] + str_constant
+                str_constant = self.upper_case_letters[val] + str_constant
             else:
-                str_constant = self.lower_alpha_mapping[val] + str_constant
+                str_constant = self.lower_case_letters[val] + str_constant
             start //= 26
         if uppercase:
-            str_constant = self.upper_alpha_mapping[start - 1] + str_constant
+            str_constant = self.upper_case_letters[start - 1] + str_constant
         else:
-            str_constant = self.lower_alpha_mapping[start - 1] + str_constant
+            str_constant = self.lower_case_letters[start - 1] + str_constant
         return str_constant
 
     def replace_predicate_by_constant(self, statement):
@@ -49,12 +49,13 @@ class CNF():
         """
         r = re.compile('~?[A-Z][A-Za-z]*\([a-zA-Z][a-zA-Z,]*\)')
         predicates = r.findall(statement)
-        predicates_dict = {}
-        for index, predicate in enumerate(set(predicates)):
-            predicate_constant = self.give_constant(index, True)
-            predicates_dict[predicate_constant] = predicate
-            statement = statement.replace(predicate, predicate_constant)
-        return statement, predicates_dict
+        predicates_map = {}
+        predicate_list = list(set(predicates))
+        for index in range(len(predicate_list)):
+            predicate_constant = self.assign_predicate_constant(index, True)
+            predicates_map[predicate_constant] = predicate_list[index]
+            statement = statement.replace(predicate_list[index], predicate_constant)
+        return statement, predicates_map
 
 
     def standardize_variables(self, statements):
@@ -75,7 +76,7 @@ class CNF():
             parameters = list(filter(lambda x: x.islower(), parameters))
             parameters = list(set(parameters))
             for para in parameters:
-                variable_dict[para] = self.give_constant(self.standard_variable_count, False)
+                variable_dict[para] = self.assign_predicate_constant(self.standard_variable_count, False)
                 self.standard_variable_count += 1
             predicates = statement.split('|')
             predicate_list = []
@@ -88,39 +89,39 @@ class CNF():
             standard_statements.append('|'.join(predicate_list))
         return standard_statements
 
-    def replace_constant_by_predicate(self, statement, predicates_dict):
+    def replace_constant_by_predicate(self, statement, predicates_map):
         """
         restores predicate string in place of constants
         for getting the original statement back
         """
-        for key, value in predicates_dict.items():
-            statement = statement.replace(key, value)
+        for key, val in predicates_map.items():
+            statement = statement.replace(key, val)
         return statement
 
-    def propagate_negation(self, node):
+    def propagate_negated(self, node):
         """
-        moves negation inside and hence applies De Morgans law
+        moves negated inside and hence applies De Morgans law
         """
         if node:
-            if node.operator and node.negation:
-                node.left.negation = not node.left.negation
-                node.right.negation = not node.right.negation
-                if node.value == '&':
-                    node.value = '|'
+            if node.op and node.negated:
+                node.left.negated = not node.left.negated
+                node.right.negated = not node.right.negated
+                if node.val == '&':
+                    node.val = '|'
                 else:
-                    node.value = '&'
-                node.negation = False
-            self.propagate_negation(node.left)
-            self.propagate_negation(node.right)
+                    node.val = '&'
+                node.negated = False
+            self.propagate_negated(node.left)
+            self.propagate_negated(node.right)
 
-    def distribute_and_over_or(self, node, predicates_dict):
+    def distribute_and_over_or(self, node, predicates_map):
         """
         distributes and over or in the step
         of converting an FOL statement to CNF
         """
         if node:
-            if node.value == '|':
-                if node.left.value == '&' and node.right.value == '&':  # OR as parent, two AND as its children
+            if node.val == '|':
+                if node.left.val == '&' and node.right.val == '&':  # OR as parent, two AND as its children
                     left_and = node.left
                     right_and = node.right
                     a = left_and.left
@@ -131,11 +132,11 @@ class CNF():
                     b_copy = copy.deepcopy(b)
                     c_copy = copy.deepcopy(c)
                     d_copy = copy.deepcopy(d)
-                    left_or_1 = Node('|', predicates_dict)
-                    left_or_2 = Node('|', predicates_dict)
-                    right_or_1 = Node('|', predicates_dict)
-                    right_or_2 = Node('|', predicates_dict)
-                    node.value = '&'
+                    left_or_1 = Node('|', predicates_map)
+                    left_or_2 = Node('|', predicates_map)
+                    right_or_1 = Node('|', predicates_map)
+                    right_or_2 = Node('|', predicates_map)
+                    node.val = '&'
                     left_and.left = left_or_1
                     left_and.right = left_or_2
                     right_and.left = right_or_1
@@ -148,27 +149,27 @@ class CNF():
                     right_or_1.right = c_copy
                     right_or_2.left = b_copy
                     right_or_2.right = d_copy
-                elif node.left.operator and not node.right.operator and node.left.value == '&':
+                elif node.left.op and not node.right.op and node.left.val == '&':
                     c = node.left.right
                     a = node.right
                     a_copy = copy.deepcopy(a)
-                    right_or = Node('|', predicates_dict)
-                    node.value = '&'
-                    node.left.value = '|'
+                    right_or = Node('|', predicates_map)
+                    node.val = '&'
+                    node.left.val = '|'
                     node.left.right = a
                     node.right = right_or
                     right_or.left = c
                     right_or.right = a_copy
-                elif not node.left.operator and node.right.operator and node.right.value == '&':
+                elif not node.left.op and node.right.op and node.right.val == '&':
                     a = node.left
                     a_copy = copy.deepcopy(a)
                     b = node.right.left
-                    left_or = Node('|', predicates_dict)
-                    node.value = '&'
-                    node.right.value = '|'
+                    left_or = Node('|', predicates_map)
+                    node.val = '&'
+                    node.right.val = '|'
                     node.left = left_or
                     left_or.left = a
                     left_or.right = b
                     node.right.left = a_copy
-            self.distribute_and_over_or(node.left, predicates_dict)
-            self.distribute_and_over_or(node.right, predicates_dict)
+            self.distribute_and_over_or(node.left, predicates_map)
+            self.distribute_and_over_or(node.right, predicates_map)
