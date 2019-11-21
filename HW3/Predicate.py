@@ -1,96 +1,77 @@
 class Predicate():
-    """
-    defines one predicate and the operations allowed on them
-    member variables include:
-    negated : True if predicate is negated
-    name : the name of the predicate
-    predicate_string : the unparsed predicate string
-    arguments : list of predicate arguments
-    """
-    def __init__(self, predicate):
-        split_predicate = predicate.split('(')
+    def __init__(self, pred):
+        self.operator = {'neg': '~', 'and': '&', 'or': '|', 'implies': '=>', 'openBr': '(', 'closedBr': ')'}
+        split_pred = pred.split(self.operator['openBr'])
         self.negated = False
-        self.name = split_predicate[0]
-        self.predicate_string = predicate
-        if '~' in split_predicate[0]:
-            self.name = split_predicate[0][1:]
-            self.negated = True
-        parameters = split_predicate[1][:-1]        # remove closing parenthesis
+        self.name = split_pred[0]
+        self.pred_string = pred
+        parameters = split_pred[1][:-1]  # remove closing parenthesis
         self.arguments = parameters.split(',')
+        if self.operator['neg'] in split_pred[0]:
+            self.name = split_pred[0][1:]
+            self.negated = True
+
 
     def __str__(self):
-        return '~'[not self.negated:] + self.name + '(' + ','.join(self.arguments) + ')'
+        return self.operator['neg'][not self.negated:] + self.name + self.operator['openBr'] + ','.join(self.arguments) + self.operator['closedBr']
 
-    def negate(self):
-        """
-        to negate a predicate
-        """
-        self.negated = not self.negated
-        self.update_predicate_string()
-
-    def __eq__(self, predicate):
-        return self.__dict__ == predicate.__dict__
+    def __eq__(self, pred):
+        return self.__dict__ == pred.__dict__
 
     def __hash__(self):
-        return hash((self.predicate_string))
+        return hash((self.pred_string))
 
-    def unify_with_predicate(self, predicate):
-        """
-        returns substitution if the self predicate object
-        unifies successfully with predicate argument else
-        returns False if cannot be unified
-        """
-        if self.name == predicate.name and len(self.arguments) == len(predicate.arguments):
-            substitution = {}
-            return unify(self.arguments, predicate.arguments, substitution)
-        else:
-            return False
+    def negate(self):
+        self.negated = not self.negated
+        self.pred_string = self.operator['neg'][not self.negated:] + self.name + self.operator['openBr'] + ','.join(self.arguments) + self.operator['closedBr']
 
-    def update_predicate_string(self):
-        """
-        reconstructs predicate string
-        """
-        self.predicate_string = '~'[not self.negated:] + self.name + '(' + ','.join(self.arguments) + ')'
+    def unify_with_pred(self, pred):
+        substitute = {}
+        if self.name == pred.name:
+            if len(self.arguments) == len(pred.arguments):
+                return unify(self.arguments, pred.arguments, substitute)
+        return False
 
-    def substitute(self, substitution):
-        """
-        substitutes 'substitution' in the self predicate
-        object obtained as a result of unification of
-        this predicate with another
-        """
-        if substitution:
-            for index, arg in enumerate(self.arguments):
-                if arg in substitution:
-                    self.arguments[index] = substitution[arg]
-            self.update_predicate_string()
+    def substitute(self, substitute):
+        if substitute:
+            index = 0
+            for arg in self.arguments:
+                if arg in substitute:
+                    self.arguments[index] = substitute[arg]
+                index += 1
+            self.pred_string = self.operator['neg'][not self.negated:] + self.name + self.operator['openBr'] + ','.join(self.arguments) + self.operator['closedBr']
         return self
 
-def unify(predicate1_arg, predicate2_arg, substitution):
-    """
-    unifies two predicates and returns the substitution
-    returns false if predicates cannot be unified
-    """
-    if substitution == False:
-        return False
-    elif predicate1_arg == predicate2_arg:
-        return substitution
-    elif isinstance(predicate1_arg, str) and predicate1_arg.islower():
-        return unify_var(predicate1_arg, predicate2_arg, substitution)
-    elif isinstance(predicate2_arg, str) and predicate2_arg.islower():
-        return unify_var(predicate2_arg, predicate1_arg, substitution)
-    elif isinstance(predicate1_arg, list) and isinstance(predicate2_arg, list):
-        if predicate1_arg and predicate2_arg:
-            return unify(predicate1_arg[1:], predicate2_arg[1:], unify(predicate1_arg[0], predicate2_arg[0], substitution))
+def unify(pred1_arg, pred2_arg, substitute):
+    def unify_var(var, x, substitute):
+        pred1, pred2, sub = None, None, None
+        if var in substitute:
+            pred1 = substitute[var]
+            pred2 = x
+            sub = True
+        elif x in substitute:
+            pred1 = var
+            pred2 = substitute[x]
+            sub = True
         else:
-            return substitution
+            sub = False
+        if sub:
+            return unify(pred1, pred2, substitute)
+        else:
+            substitute[var] = x
+            return substitute
+    if substitute == False:
+        return False
+    elif pred1_arg.__eq__(pred2_arg):
+        return substitute
+    elif type(pred1_arg) == str and pred1_arg.islower():
+        return unify_var(pred1_arg, pred2_arg, substitute)
+    elif type(pred2_arg) == str and pred2_arg.islower():
+        return unify_var(pred2_arg, pred1_arg, substitute)
+    elif type(pred1_arg) == list and type(pred2_arg) == list:
+        if pred1_arg is not None:
+            if pred2_arg is not None:
+                return unify(pred1_arg[1:], pred2_arg[1:], unify(pred1_arg[0], pred2_arg[0], substitute))
+        return substitute
     else:
         return False
-
-def unify_var(var, x, substitution):
-    if var in substitution:
-        return unify(substitution[var], x, substitution)
-    elif x in substitution:
-        return unify(var, substitution[x], substitution)
-    else:
-        substitution[var] = x
-        return substitution
