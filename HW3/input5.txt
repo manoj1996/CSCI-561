@@ -1,5 +1,5 @@
 1
-Oler(Fifi, Lulu)
+Older(Fifi, Lulu)
 4
 Mother(Lulu, Fifi)
 Alive(Lulu)

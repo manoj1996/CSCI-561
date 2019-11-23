@@ -2,9 +2,10 @@ from CNF import CNF
 from LogicStatement import *
 import re
 import collections
+import time
 from DOM import *
 preds_map = {}  # maintains preds to constant mapping for a FOL stat
-INPUT_FILE = 'input6.txt'
+INPUT_FILE = 'input11.txt'
 OUTPUT_FILE = 'output.txt'
 KNOWLEDGE_BASE_HASH = {}
 KNOWLEDGE_BASE = set()
@@ -122,6 +123,7 @@ def FOL_Resolution(knowledge_base_copy, query):
     while True:
         history = {}
         new_stats = set()
+        count = 0
         for i, stat1 in enumerate(knowledge_base_copy):
             resolving_clauses = stat1.get_resolving_clauses(knowledge_base_hash_copy)
             for j, stat2 in enumerate(resolving_clauses):
@@ -143,6 +145,10 @@ def FOL_Resolution(knowledge_base_copy, query):
                 resolvents = stat1.resolve(stat2)
                 if resolvents == False:
                     return True
+                else:
+                    count += 1
+                if count > 5000:
+                    return False
                 new_stats = new_stats.union(resolvents)
         knowledge_base_hash_copy = {}
         knowledge_base2 = set()
@@ -175,7 +181,7 @@ if __name__ == "__main__":
     queries, fol_sentences = parse_input()
     prepare_knowledgebase(fol_sentences)
     output = ""
-
+    start = time.time()
     for query_pred in queries:
         query_pred.negate()
         query_pred = LogicStatement(query_pred.pred_string)
@@ -183,7 +189,8 @@ if __name__ == "__main__":
         knowledge_base_hash = dict(KNOWLEDGE_BASE_HASH)
         satisfiability = FOL_Resolution(knowledge_base, query_pred)
         output += 'TRUE' + '\n' if satisfiability else 'FALSE' + '\n'
-    display_knowledgebase(KNOWLEDGE_BASE, KNOWLEDGE_BASE_HASH)
+    # display_knowledgebase(KNOWLEDGE_BASE, KNOWLEDGE_BASE_HASH)
     with open(OUTPUT_FILE, 'w+') as f_output:
         f_output.write(output.strip())
     f_output.close()
+    print("Execution time:{0:.2f}".format(time.time()-start)+'s')
