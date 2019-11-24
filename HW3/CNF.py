@@ -34,7 +34,7 @@ class CNF():
         return str_constant
 
     def replace_pred_by_constant(self, statement):
-        r = re.compile('~?[A-Z][A-Za-z]*\([a-zA-Z][a-zA-Z,]*\)')
+        r = re.compile('~?[A-Z][A-Za-z0-9]*\([a-zA-Z0-9][a-zA-Z,0-9]*\)')
         preds = r.findall(statement)
         preds_map = {}
         pred_list = list(set(preds))

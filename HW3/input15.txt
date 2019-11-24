@@ -1,0 +1,5 @@
+1
+Q(Bob)
+2
+P(x) & ~Q(x) => Eats(x)
+Eats(Bob) => P(Bob)

@@ -1,10 +1,10 @@
 1
-Kills(Curiosity, Tuna)
+Kills8(Curiosity, Tuna)
 7
-Dog(D)
-Owns(Jack,D)
-Dog(y) & Owns(x,y) => AnimalLover(x)
-AnimalLover(w) & Animal(y) => ~Kills(w,y)
-~Kills(Jack, Tuna) => Kills(Curiosity, Tuna)
-Cat(Tuna)
-Cat(z) => Animal(z)
+Dog8(D)
+Owns8(Jack,D)
+Dog8(y) & Owns8(x,y) => AnimalLover8(x)
+AnimalLover8(w) & Animal8(y) => ~Kills8(w,y)
+~Kills8(Jack, Tuna) => Kills8(Curiosity, Tuna)
+Cat8(Tuna)
+Cat8(z) => Animal8(z)
