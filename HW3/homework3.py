@@ -5,7 +5,7 @@ import collections
 import time
 from DOM import *
 preds_map = {}  # maintains preds to constant mapping for a FOL stat
-INPUT_FILE = 'input13.txt'
+INPUT_FILE = 'input.txt'
 OUTPUT_FILE = 'output.txt'
 KNOWLEDGE_BASE_HASH = {}
 KNOWLEDGE_BASE = set()
@@ -103,18 +103,6 @@ def prepare_knowledgebase(FOL_SENTENCES):
             stmt_obj.add_stat_to_knowledge_base(KNOWLEDGE_BASE, KNOWLEDGE_BASE_HASH)
 
 
-def display_knowledgebase(knowledge_base, knowledge_base_hash=None):
-    print("\nKNOWLEDGE BASE\n")
-    if knowledge_base is not None:
-        for index, val in enumerate(knowledge_base):
-            print(val)
-    print('Total No. of Logic Statements : ', len(knowledge_base))
-    if knowledge_base_hash is not None:
-        print("\nKNOWLEDGE BASE HASH\n")
-        for key in knowledge_base_hash:
-            print(key, ':', len(knowledge_base_hash[key]), ' Logic Statements')
-
-
 def FOL_Resolution(knowledge_base_copy, query, query_start_time):
     knowledge_base2 = set()
     knowledge_base_hash_copy = {}
@@ -123,10 +111,11 @@ def FOL_Resolution(knowledge_base_copy, query, query_start_time):
     while True:
         history = {}
         new_stats = set()
+        count = 0
         for i, stat1 in enumerate(knowledge_base_copy):
             resolving_clauses = stat1.get_resolving_clauses(knowledge_base_hash_copy)
             for j, stat2 in enumerate(resolving_clauses):
-                if time.time() - query_start_time > 1:
+                if time.time() - query_start_time > 1 and count > 20000:
                     return False
                 if stat1 == stat2:
                     continue
@@ -146,10 +135,8 @@ def FOL_Resolution(knowledge_base_copy, query, query_start_time):
                 resolvents = stat1.resolve(stat2)
                 if resolvents == False:
                     return True
-                # else:
-                #     count += 1
-                # if count > 20000:
-                #     return False
+                else:
+                    count += 1
                 new_stats = new_stats.union(resolvents)
         knowledge_base_hash_copy = {}
         knowledge_base2 = set()
@@ -191,8 +178,7 @@ if __name__ == "__main__":
         query_start_time = time.time()
         satisfiability = FOL_Resolution(knowledge_base, query_pred, query_start_time)
         output += 'TRUE' + '\n' if satisfiability else 'FALSE' + '\n'
-    # display_knowledgebase(KNOWLEDGE_BASE, KNOWLEDGE_BASE_HASH)
     with open(OUTPUT_FILE, 'w+') as f_output:
         f_output.write(output.strip())
     f_output.close()
-    print("Execution time:{0:.2f}".format(time.time()-start)+'s')
+    # print("Execution time:{0:.2f}".format(time.time()-start)+'s')

@@ -1,5 +1,5 @@
 1
-Eats(Josephie,Fish)
+Eats(Josephine,Fish)
 3
 Cat(x) => Likes(x,Fish)
 Cat(x) & Likes(x,y) => Eats(x,y)
