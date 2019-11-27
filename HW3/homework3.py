@@ -115,7 +115,7 @@ def FOL_Resolution(knowledge_base_copy, query, query_start_time):
         for i, stat1 in enumerate(knowledge_base_copy):
             resolving_clauses = stat1.get_resolving_clauses(knowledge_base_hash_copy)
             for j, stat2 in enumerate(resolving_clauses):
-                if time.time() - query_start_time > 1 and count > 20000:
+                if time.time() - query_start_time > 3 and count > 25000:
                     return False
                 if stat1 == stat2:
                     continue
