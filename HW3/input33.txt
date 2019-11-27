@@ -1,6 +1,14 @@
 1
-H(Adam)
-3
-D(z,y) => H(x)
-A(x) => D(x,x)
-A(Bob)
+Ancestor(Liz, Billy)
+11
+Parent(x,y) & Ancestor(y,z) => Ancestor(x,z)
+Mother(Liz,Charley)
+Father(Charley,Pik)
+Father(Pik,Gean)
+Father(Gean,Billy)
+Father(Billy, Joe)
+Mother(Joe,Ayush)
+Father(Ayush, Math)
+Mother(x,y) => Parent(x,y)
+Father(x,y) => Parent(x,y)
+Parent(x,y) => Ancestor(x,y)
